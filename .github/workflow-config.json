@@ -2,10 +2,17 @@
   "workflow": {
     "name": "Build and Release Ladybird Browser",
     "description": "Automated builds and releases for Ladybird Browser on Linux distributions",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "optimized": true
   },
   "build": {
     "ladybird_repository": "https://github.com/LadybirdBrowser/ladybird.git",
+    "optimizations": {
+      "caching": true,
+      "parallel_builds": true,
+      "shallow_clone": true,
+      "ccache_enabled": true
+    },
     "distributions": [
       {
         "name": "ubuntu",
@@ -131,6 +138,14 @@
     "prerelease": false,
     "generate_release_notes": true,
     "include_artifacts": true
+  },
+  "performance": {
+    "runner_type": "ubuntu-latest",
+    "parallel_build_level": 4,
+    "vcpkg_max_concurrency": 4,
+    "vcpkg_binary_sources": "clear;nuget,GitHub,readwrite;nuget,https://api.nuget.org/v3/index.json,read",
+    "cache_strategy": "vcpkg_dependencies,ccache",
+    "runner_specs": "4 vCPUs, 16GB RAM, improved storage"
   },
   "security": {
     "ubuntu_build_user": "runner",

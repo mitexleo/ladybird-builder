@@ -14,11 +14,14 @@ env:
   BUILD_PRESET: Release
   VERSION_BASE: v1.0
   LADYBIRD_REPO: https://github.com/LadybirdBrowser/ladybird.git
+  VCPKG_BINARY_SOURCES: "clear;nuget,GitHub,readwrite;nuget,https://api.nuget.org/v3/index.json,read"
+  # GitHub runners: 4 vCPUs, 16GB RAM, improved storage
 
 jobs:
   build-ubuntu:
     name: Build on Ubuntu
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         compiler: [gcc-14, clang-20]
@@ -27,11 +30,27 @@ jobs:
       - name: Checkout builder repository
         uses: actions/checkout@v4
 
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/vcpkg
+            ladybird-src/Build/vcpkg/downloads
+            ladybird-src/Build/vcpkg/buildtrees
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ccache-${{ runner.os }}-${{ matrix.compiler }}
+
       - name: Clone Ladybird repository
         run: |
-          git clone --depth 1 $LADYBIRD_REPO ladybird-src
+          git clone --depth 1 --shallow-submodules $LADYBIRD_REPO ladybird-src
           cd ladybird-src
-          git submodule update --init --recursive
+          git submodule update --init --depth 1
 
       - name: Install Ubuntu dependencies
         run: |
@@ -72,9 +91,14 @@ jobs:
           echo "G++ version:"
           g++ --version
 
-      - name: Build Ladybird
+      - name: Build Ladybird (optimized)
         working-directory: ladybird-src
         run: |
+          export CMAKE_BUILD_PARALLEL_LEVEL=4
+          export VCPKG_MAX_CONCURRENCY=4
+          export CCACHE_DIR="$HOME/.ccache"
+          export VCPKG_BINARY_SOURCES="$VCPKG_BINARY_SOURCES"
+          # Optimize for GitHub runners (4 vCPUs, 16GB RAM)
           ./Meta/ladybird.py build
 
       - name: Package Ubuntu binary
@@ -99,6 +123,7 @@ jobs:
   build-fedora:
     name: Build on Fedora
     runs-on: ubuntu-latest
+
     container:
       image: fedora:latest
 
@@ -111,16 +136,32 @@ jobs:
       - name: Checkout builder repository
         uses: actions/checkout@v4
 
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/vcpkg
+            ladybird-src/Build/vcpkg/downloads
+            ladybird-src/Build/vcpkg/buildtrees
+          key: vcpkg-fedora-${{ hashFiles('**/vcpkg.json') }}
+          restore-keys: |
+            vcpkg-fedora-
+
+      - name: Setup ccache
+        run: |
+          mkdir -p ~/.ccache
+          echo "max_size = 2.0G" > ~/.ccache/ccache.conf
+
       - name: Clone Ladybird repository
         run: |
           # Create non-root user for building
           useradd -m -u 1001 builder
           chown -R builder:builder /__w/ladybird-builder/ladybird-builder
 
-          # Clone as non-root user
-          sudo -u builder git clone --depth 1 $LADYBIRD_REPO ladybird-src
+          # Clone as non-root user with shallow submodules
+          sudo -u builder git clone --depth 1 --shallow-submodules $LADYBIRD_REPO ladybird-src
           cd ladybird-src
-          sudo -u builder git submodule update --init --recursive
+          sudo -u builder git submodule update --init --depth 1
 
       - name: Check GCC version
         run: |
@@ -129,9 +170,14 @@ jobs:
           echo "G++ version:"
           g++ --version
 
-      - name: Build Ladybird
+      - name: Build Ladybird (optimized)
         working-directory: ladybird-src
         run: |
+          export CMAKE_BUILD_PARALLEL_LEVEL=4
+          export VCPKG_MAX_CONCURRENCY=4
+          export CCACHE_DIR="$HOME/.ccache"
+          export VCPKG_BINARY_SOURCES="$VCPKG_BINARY_SOURCES"
+          # Optimize for GitHub runners (4 vCPUs, 16GB RAM)
           sudo -u builder ./Meta/ladybird.py build
 
       - name: Package Fedora binary
