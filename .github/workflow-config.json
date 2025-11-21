@@ -1,0 +1,107 @@
+{
+  "workflow": {
+    "name": "Build and Release Ladybird Browser",
+    "description": "Automated builds and releases for Ladybird Browser on Linux distributions",
+    "version": "1.0.0"
+  },
+  "build": {
+    "distributions": [
+      {
+        "name": "ubuntu",
+        "runs_on": "ubuntu-latest",
+        "compilers": ["gcc-14", "clang-20"],
+        "dependencies": [
+          "autoconf",
+          "autoconf-archive",
+          "automake",
+          "build-essential",
+          "ccache",
+          "cmake",
+          "curl",
+          "fonts-liberation2",
+          "git",
+          "libdrm-dev",
+          "libgl1-mesa-dev",
+          "libtool",
+          "nasm",
+          "ninja-build",
+          "pkg-config",
+          "python3-venv",
+          "qt6-base-dev",
+          "qt6-tools-dev-tools",
+          "qt6-wayland",
+          "tar",
+          "unzip",
+          "zip",
+          "libpulse-dev"
+        ]
+      },
+      {
+        "name": "fedora",
+        "runs_on": "fedora:latest",
+        "container": true,
+        "dependencies": [
+          "autoconf-archive",
+          "automake",
+          "ccache",
+          "cmake",
+          "curl",
+          "git",
+          "libdrm-devel",
+          "liberation-sans-fonts",
+          "libglvnd-devel",
+          "libtool",
+          "nasm",
+          "ninja-build",
+          "patchelf",
+          "perl-FindBin",
+          "perl-IPC-Cmd",
+          "perl-lib",
+          "perl-Time-Piece",
+          "qt6-qtbase-devel",
+          "qt6-qttools-devel",
+          "qt6-qtwayland-devel",
+          "tar",
+          "unzip",
+          "zip",
+          "zlib-ng-compat-static",
+          "libpulse-devel",
+          "gcc",
+          "gcc-c++",
+          "python3"
+        ]
+      }
+    ]
+  },
+  "versioning": {
+    "strategy": "semantic",
+    "initial_version": "v1.0.0",
+    "auto_increment": "patch",
+    "version_file": ".github/version.txt"
+  },
+  "schedule": {
+    "enabled": true,
+    "cron": ["0 0,12 * * *"],
+    "description": "Twice daily at 00:00 and 12:00 UTC"
+  },
+  "triggers": {
+    "push": ["main", "master"],
+    "pull_request": ["main", "master"],
+    "workflow_dispatch": true,
+    "schedule": true
+  },
+  "artifacts": {
+    "retention_days": 7,
+    "include_launcher": true,
+    "packaging": {
+      "create_tarballs": false,
+      "include_debug_symbols": false
+    }
+  },
+  "release": {
+    "create_draft": false,
+    "prerelease": false,
+    "generate_release_notes": true,
+    "include_artifacts": true
+  }
+}

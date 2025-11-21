@@ -1,0 +1,193 @@
+name: Build and Release Ladybird Browser
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    # Run twice daily at 00:00 and 12:00 UTC
+    - cron: '0 0,12 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  BUILD_PRESET: Release
+  VERSION_BASE: v1.0
+
+jobs:
+  build-ubuntu:
+    name: Build on Ubuntu
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc-14, clang-20]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Ubuntu dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y autoconf autoconf-archive automake build-essential ccache cmake curl fonts-liberation2 git libdrm-dev libgl1-mesa-dev libtool nasm ninja-build pkg-config python3-venv qt6-base-dev qt6-tools-dev-tools qt6-wayland tar unzip zip libpulse-dev
+
+    - name: Install CMake 3.25+
+      run: |
+        # Add Kitware GPG signing key and repository for latest CMake
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+        echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/kitware.list
+        sudo apt update
+        sudo apt install -y cmake
+
+    - name: Setup ${{ matrix.compiler }}
+      if: matrix.compiler == 'gcc-14'
+      run: |
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        sudo apt update
+        sudo apt install -y g++-14 libstdc++-14-dev
+        echo "CC=gcc-14" >> $GITHUB_ENV
+        echo "CXX=g++-14" >> $GITHUB_ENV
+
+    - name: Setup ${{ matrix.compiler }}
+      if: matrix.compiler == 'clang-20'
+      run: |
+        sudo wget -O /usr/share/keyrings/llvm-snapshot.gpg.key https://apt.llvm.org/llvm-snapshot.gpg.key
+        echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg.key] https://apt.llvm.org/$(lsb_release -sc)/ llvm-toolchain-$(lsb_release -sc)-20 main" | sudo tee -a /etc/apt/sources.list.d/llvm.list
+        sudo apt update
+        sudo apt install -y clang-20 clangd-20 clang-tools-20 clang-format-20 clang-tidy-20 lld-20
+        echo "CC=clang-20" >> $GITHUB_ENV
+        echo "CXX=clang++-20" >> $GITHUB_ENV
+
+    - name: Build Ladybird
+      run: |
+        ./Meta/ladybird.py build
+
+    - name: Package Ubuntu binary
+      run: |
+        mkdir -p artifacts/ubuntu-${{ matrix.compiler }}
+        cp -r Build/release/bin/* artifacts/ubuntu-${{ matrix.compiler }}/
+        # Create a simple launcher script
+        cat > artifacts/ubuntu-${{ matrix.compiler }}/ladybird-launcher.sh << 'EOF'
+        #!/bin/bash
+        cd "$(dirname "$0")"
+        ./Ladybird "$@"
+        EOF
+        chmod +x artifacts/ubuntu-${{ matrix.compiler }}/ladybird-launcher.sh
+
+    - name: Upload Ubuntu artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ladybird-ubuntu-${{ matrix.compiler }}
+        path: artifacts/ubuntu-${{ matrix.compiler }}/
+        retention-days: 7
+
+  build-fedora:
+    name: Build on Fedora
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+
+    steps:
+    - name: Install Fedora dependencies
+      run: |
+        dnf update -y
+        dnf install -y autoconf-archive automake ccache cmake curl git libdrm-devel liberation-sans-fonts libglvnd-devel libtool nasm ninja-build patchelf perl-FindBin perl-IPC-Cmd perl-lib perl-Time-Piece qt6-qtbase-devel qt6-qttools-devel qt6-qtwayland-devel tar unzip zip zlib-ng-compat-static libpulse-devel gcc gcc-c++ python3
+
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Build Ladybird
+      run: |
+        ./Meta/ladybird.py build
+
+    - name: Package Fedora binary
+      run: |
+        mkdir -p artifacts/fedora
+        cp -r Build/release/bin/* artifacts/fedora/
+        # Create a simple launcher script
+        cat > artifacts/fedora/ladybird-launcher.sh << 'EOF'
+        #!/bin/bash
+        cd "$(dirname "$0")"
+        ./Ladybird "$@"
+        EOF
+        chmod +x artifacts/fedora/ladybird-launcher.sh
+
+    - name: Upload Fedora artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ladybird-fedora
+        path: artifacts/fedora/
+        retention-days: 7
+
+  create-release:
+    name: Create Release
+    needs: [build-ubuntu, build-fedora]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Determine version
+      id: version
+      run: |
+        # Get the latest release tag
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "$VERSION_BASE.0")
+
+        # Extract version numbers
+        if [[ $LATEST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+          MAJOR=${BASH_REMATCH[1]}
+          MINOR=${BASH_REMATCH[2]}
+          PATCH=${BASH_REMATCH[3]}
+
+          # Increment patch version
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+        else
+          # If no valid tag found, start from v1.0.1
+          NEW_VERSION="v1.0.1"
+        fi
+
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+        echo "New version: $NEW_VERSION"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.NEW_VERSION }}
+        name: Ladybird Browser ${{ env.NEW_VERSION }}
+        body: |
+          Automated build of Ladybird Browser ${{ env.NEW_VERSION }}
+
+          **Build Information:**
+          - Commit: ${{ github.sha }}
+          - Build Date: ${{ github.event.head_commit.timestamp }}
+          - Trigger: ${{ github.event_name }}
+
+          **Available Artifacts:**
+          - Ubuntu (GCC 14)
+          - Ubuntu (Clang 20)
+          - Fedora
+
+          **Installation:**
+          1. Download the appropriate archive for your distribution
+          2. Extract the files
+          3. Run `./ladybird-launcher.sh` to start the browser
+
+          **Note:** This is an automated build. For official releases, please check the main Ladybird repository.
+        draft: false
+        prerelease: false
+        files: |
+          ladybird-ubuntu-gcc-14/**
+          ladybird-ubuntu-clang-20/**
+          ladybird-fedora/**
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
