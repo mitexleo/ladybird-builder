@@ -5,6 +5,7 @@
     "version": "1.0.0"
   },
   "build": {
+    "ladybird_repository": "https://github.com/LadybirdBrowser/ladybird.git",
     "distributions": [
       {
         "name": "ubuntu",
@@ -65,7 +66,7 @@
           "unzip",
           "zip",
           "zlib-ng-compat-static",
-          "libpulse-devel",
+          "pulseaudio-libs-devel",
           "gcc",
           "gcc-c++",
           "python3"

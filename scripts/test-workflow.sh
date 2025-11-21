@@ -110,7 +110,7 @@ done
 
 # Test 10: Check schedule configuration
 echo "📋 Test 10: Checking schedule configuration..."
-if grep -q "cron: '0 0,12 \* \* \*'" .github/workflows/build-and-release.yml; then
+if grep -q 'cron: "0 0,12 \* \* \*"' .github/workflows/build-and-release.yml; then
     echo "✅ Schedule configured for twice daily builds"
 else
     echo "❌ Schedule configuration incorrect"

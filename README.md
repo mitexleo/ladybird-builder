@@ -4,12 +4,21 @@ This repository contains GitHub Actions workflows to automatically build and rel
 
 ## Overview
 
-The workflow automatically:
+This is a **builder repository** that automatically:
+- Clones the official Ladybird Browser source code from [LadybirdBrowser/ladybird](https://github.com/LadybirdBrowser/ladybird)
 - Builds Ladybird Browser on Ubuntu and Fedora
 - Tests with both GCC 14 and Clang 20 compilers
 - Creates releases with auto-incrementing version tags (starting from v1.0.0)
 - Runs twice daily to get the latest commits
 - Supports manual triggering via workflow_dispatch
+
+## How It Works
+
+1. **Clone Source**: The workflow clones the official Ladybird repository
+2. **Install Dependencies**: Installs all required build dependencies for each distribution
+3. **Build**: Uses Ladybird's official build script (`./Meta/ladybird.py build`)
+4. **Package**: Creates portable binaries with launcher scripts
+5. **Release**: Creates GitHub releases with auto-incrementing version tags
 
 ## Workflow Features
 
@@ -79,9 +88,33 @@ The versioning follows semantic versioning:
 
 Starting version: `v1.0.0`
 
+## Repository Structure
+
+```
+ladybird-builder/
+├── .github/
+│   ├── workflows/
+│   │   └── build-and-release.yml    # Main workflow file
+│   └── workflow-config.json          # Configuration file
+├── scripts/
+│   ├── version-manager.sh           # Version management
+│   └── test-workflow.sh             # Workflow testing
+├── README.md                        # Main documentation
+└── SETUP.md                         # Setup guide
+```
+
 ## Contributing
 
 To modify the workflow:
 1. Edit `.github/workflows/build-and-release.yml`
 2. Test changes in a fork or branch
 3. Submit a pull request
+
+## License
+
+This project is licensed under the same license as Ladybird Browser.
+
+## Related Projects
+
+- [Ladybird Browser](https://github.com/LadybirdBrowser/ladybird) - The official Ladybird Browser repository
+- [Ladybird Documentation](https://github.com/LadybirdBrowser/ladybird/blob/master/Documentation/BuildInstructionsLadybird.md) - Official build instructions

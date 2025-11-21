@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains automated GitHub Actions workflows to build and release Ladybird Browser for major Linux distributions. The workflow automatically builds the browser, packages binaries, and creates releases with auto-incrementing version tags.
+This repository contains automated GitHub Actions workflows to build and release Ladybird Browser for major Linux distributions. This is a **builder repository** that clones the official Ladybird source code, builds the browser, packages binaries, and creates releases with auto-incrementing version tags.
 
 ## Quick Setup
 
@@ -10,6 +10,7 @@ This repository contains automated GitHub Actions workflows to build and release
 2. **Push the code** to your GitHub repository
 3. **Enable GitHub Actions** (enabled by default)
 4. **Monitor the workflow** in the Actions tab
+5. **The workflow will clone Ladybird source** and build automatically
 
 ## Repository Structure
 
@@ -19,6 +20,7 @@ ladybird-builder/
 │   ├── workflows/
 │   │   └── build-and-release.yml    # Main workflow file
 │   └── workflow-config.json          # Configuration file
+│   └── version.txt                  # Version tracking file
 ├── scripts/
 │   ├── version-manager.sh           # Version management
 │   └── test-workflow.sh             # Workflow testing
@@ -30,19 +32,20 @@ ladybird-builder/
 
 ### Build Platforms
 - **Ubuntu**: Latest Ubuntu with GCC 14 and Clang 20 compilers
-- **Fedora**: Latest Fedora in Docker container
+- **Fedora**: Latest Fedora in Docker container with correct dependencies
 
 ### Automation
 - **Twice daily builds**: 00:00 and 12:00 UTC
 - **Auto-versioning**: Starts at v1.0.0, increments patch version
 - **Release creation**: Automatic GitHub releases with artifacts
 - **Manual triggers**: Available via GitHub UI
+- **Source cloning**: Automatically clones latest Ladybird source
 
 ### Artifacts
 Each release includes:
 - Ubuntu build with GCC 14
 - Ubuntu build with Clang 20  
-- Fedora build
+- Fedora build with correct audio dependencies
 - Launcher scripts for easy execution
 
 ## Initial Setup Steps
@@ -64,9 +67,12 @@ git push origin main
 2. Navigate to **Actions** tab
 3. You should see "Build and Release Ladybird Browser" workflow
 4. The workflow will automatically run on push to main/master
+5. **Note**: The workflow clones Ladybird source from the official repository
 
 ### 3. First Build
 The workflow will:
+- Clone Ladybird Browser source code
+- Install all required dependencies for each distribution
 - Build Ladybird Browser on Ubuntu and Fedora
 - Create release v1.0.0
 - Upload binaries as release artifacts
@@ -127,6 +133,7 @@ Edit `.github/workflow-config.json` to add new distributions or modify dependenc
    - Check build logs in Actions tab
    - Verify dependency installation
    - Check Ladybird build requirements
+   - Ensure network access for cloning repositories
 
 3. **Release creation issues**
    - Verify GITHUB_TOKEN permissions
@@ -168,6 +175,7 @@ Edit `.github/workflow-config.json` to add new distributions or modify dependenc
 - **Dependencies**: Only installs from official repositories
 - **Artifacts**: Publicly available in releases
 - **No sensitive data**: Workflow doesn't handle secrets
+- **Source Integrity**: Clones from official Ladybird repository
 
 ## Support
 
@@ -175,6 +183,7 @@ For issues with:
 - **Ladybird Browser build**: Check [Ladybird documentation](https://github.com/LadybirdBrowser/ladybird)
 - **GitHub Actions**: Refer to [GitHub Actions documentation](https://docs.github.com/en/actions)
 - **Workflow configuration**: Review this setup guide and configuration files
+- **Source cloning**: Verify network connectivity and repository availability
 
 ## Next Steps
 
