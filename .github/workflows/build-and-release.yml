@@ -27,11 +27,16 @@ jobs:
       - name: Checkout builder repository
         uses: actions/checkout@v4
 
-      - name: Clone Ladybird repository
+      - name: Clone Ladybird repository as non-root user
         run: |
-          git clone --depth 1 $LADYBIRD_REPO ladybird-src
+          # Create a non-root user for building
+          useradd -m -u 1001 builder || true
+          chown -R builder:builder /home/runner/work/ladybird-builder/ladybird-builder
+
+          # Clone as non-root user
+          sudo -u builder git clone --depth 1 $LADYBIRD_REPO ladybird-src
           cd ladybird-src
-          git submodule update --init --recursive
+          sudo -u builder git submodule update --init --recursive
 
       - name: Install Ubuntu dependencies
         run: |
@@ -65,10 +70,10 @@ jobs:
           echo "CC=clang-20" >> $GITHUB_ENV
           echo "CXX=clang++-20" >> $GITHUB_ENV
 
-      - name: Build Ladybird
+      - name: Build Ladybird as non-root user
         working-directory: ladybird-src
         run: |
-          ./Meta/ladybird.py build
+          sudo -u builder ./Meta/ladybird.py build
 
       - name: Package Ubuntu binary
         run: |
@@ -104,16 +109,21 @@ jobs:
       - name: Checkout builder repository
         uses: actions/checkout@v4
 
-      - name: Clone Ladybird repository
+      - name: Clone Ladybird repository as non-root user
         run: |
-          git clone --depth 1 $LADYBIRD_REPO ladybird-src
-          cd ladybird-src
-          git submodule update --init --recursive
+          # Create a non-root user for building
+          useradd -m -u 1001 builder
+          chown -R builder:builder /__w/ladybird-builder/ladybird-builder
 
-      - name: Build Ladybird
+          # Clone as non-root user
+          sudo -u builder git clone --depth 1 $LADYBIRD_REPO ladybird-src
+          cd ladybird-src
+          sudo -u builder git submodule update --init --recursive
+
+      - name: Build Ladybird as non-root user
         working-directory: ladybird-src
         run: |
-          sudo -u nobody ./Meta/ladybird.py build
+          sudo -u builder ./Meta/ladybird.py build
 
       - name: Package Fedora binary
         run: |
