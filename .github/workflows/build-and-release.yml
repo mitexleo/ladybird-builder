@@ -14,8 +14,6 @@ env:
   BUILD_PRESET: Release
   VERSION_BASE: v1.0
   LADYBIRD_REPO: https://github.com/LadybirdBrowser/ladybird.git
-  VCPKG_BINARY_SOURCES: "clear;nuget,GitHub,readwrite;nuget,https://api.nuget.org/v3/index.json,read"
-  # GitHub runners: 4 vCPUs, 16GB RAM, improved storage
 
 jobs:
   build-ubuntu:
@@ -42,6 +40,10 @@ jobs:
         with:
           key: ccache-${{ runner.os }}-${{ matrix.compiler }}
 
+      - name: Clean up existing directory
+        run: |
+          rm -rf ladybird-src || true
+
       - name: Clone Ladybird repository
         run: |
           git clone --depth 1 --shallow-submodules $LADYBIRD_REPO ladybird-src
@@ -51,7 +53,7 @@ jobs:
       - name: Install Ubuntu dependencies
         run: |
           sudo apt update
-          sudo apt install -y autoconf autoconf-archive automake build-essential ccache cmake curl fonts-liberation2 git libdrm-dev libgl1-mesa-dev libtool nasm ninja-build pkg-config python3-venv qt6-base-dev qt6-tools-dev-tools qt6-wayland tar unzip zip libpulse-dev mesa-common-dev libglu1-mesa-dev libx11-dev libxext-dev libxi-dev libxrandr-dev libxcursor-dev libxinerama-dev libxxf86vm-dev libegl1-mesa-dev libgles2-mesa-dev libwayland-dev libxkbcommon-dev
+          sudo apt install -y autoconf autoconf-archive automake build-essential ccache cmake curl fonts-liberation2 git libdrm-dev libgl1-mesa-dev libtool nasm ninja-build pkg-config python3-venv qt6-base-dev qt6-tools-dev-tools qt6-wayland tar unzip zip libpulse-dev
           # Ensure ninja is available in PATH
           sudo ln -sf /usr/bin/ninja-build /usr/bin/ninja || true
 
@@ -78,34 +80,14 @@ jobs:
           echo "G++ version:"
           g++ --version
 
-      - name: Bootstrap vcpkg and verify setup
-        working-directory: ladybird-src
-        run: |
-          # Bootstrap vcpkg to ensure it's properly set up
-          if [ -f "Meta/CMake/vcpkg/bootstrap-vcpkg.sh" ]; then
-            chmod +x Meta/CMake/vcpkg/bootstrap-vcpkg.sh
-            ./Meta/CMake/vcpkg/bootstrap-vcpkg.sh
-          fi
-          # Verify ninja is available
-          which ninja || which ninja-build || (echo "Ninja not found" && exit 1)
-          # Verify vcpkg is bootstrapped
-          if [ -f "Build/vcpkg/vcpkg" ]; then
-            echo "vcpkg is bootstrapped"
-          else
-            echo "vcpkg needs bootstrapping"
-          fi
-
       - name: Build Ladybird (optimized)
         working-directory: ladybird-src
         run: |
           export CMAKE_BUILD_PARALLEL_LEVEL=4
-          export VCPKG_MAX_CONCURRENCY=4
           export CCACHE_DIR="$HOME/.ccache"
-          export VCPKG_BINARY_SOURCES="$VCPKG_BINARY_SOURCES"
           # Ensure ninja is in PATH
           export PATH="/usr/bin:$PATH"
-          # Optimize for GitHub runners (4 vCPUs, 16GB RAM)
-          ./Meta/ladybird.py build || (echo "Build failed, checking vcpkg logs..." && cat Build/release/vcpkg-manifest-install.log && exit 1)
+          ./Meta/ladybird.py build
 
       - name: Package Ubuntu binary
         run: |
@@ -137,7 +119,7 @@ jobs:
       - name: Install Fedora dependencies
         run: |
           dnf update -y
-          dnf install -y autoconf-archive automake ccache cmake curl git libdrm-devel liberation-sans-fonts libglvnd-devel libtool nasm ninja-build patchelf perl-FindBin perl-IPC-Cmd perl-lib perl-Time-Piece qt6-qtbase-devel qt6-qttools-devel qt6-qtwayland-devel tar unzip zip zlib-ng-compat-static pulseaudio-libs-devel gcc gcc-c++ python3 mesa-libGL-devel mesa-libGLU-devel libX11-devel libXext-devel libXi-devel libXrandr-devel libXcursor-devel libXinerama-devel libXxf86vm-devel mesa-libEGL-devel mesa-libGLES-devel wayland-devel libxkbcommon-devel sudo
+          dnf install -y autoconf-archive automake ccache cmake curl git libdrm-devel liberation-sans-fonts libglvnd-devel libtool nasm ninja-build patchelf perl-FindBin perl-IPC-Cmd perl-lib perl-Time-Piece qt6-qtbase-devel qt6-qttools-devel qt6-qtwayland-devel tar unzip zip zlib-ng-compat-static pulseaudio-libs-devel
           # Ensure ninja is available in PATH
           ln -sf /usr/bin/ninja-build /usr/bin/ninja || true
 
@@ -160,6 +142,10 @@ jobs:
           mkdir -p ~/.ccache
           echo "max_size = 2.0G" > ~/.ccache/ccache.conf
 
+      - name: Clean up existing directory
+        run: |
+          rm -rf ladybird-src || true
+
       - name: Clone Ladybird repository
         run: |
           # Create non-root user for building
@@ -178,34 +164,14 @@ jobs:
           echo "G++ version:"
           g++ --version
 
-      - name: Bootstrap vcpkg and verify setup
-        working-directory: ladybird-src
-        run: |
-          # Bootstrap vcpkg to ensure it's properly set up
-          if [ -f "Meta/CMake/vcpkg/bootstrap-vcpkg.sh" ]; then
-            chmod +x Meta/CMake/vcpkg/bootstrap-vcpkg.sh
-            ./Meta/CMake/vcpkg/bootstrap-vcpkg.sh
-          fi
-          # Verify ninja is available
-          which ninja || which ninja-build || (echo "Ninja not found" && exit 1)
-          # Verify vcpkg is bootstrapped
-          if [ -f "Build/vcpkg/vcpkg" ]; then
-            echo "vcpkg is bootstrapped"
-          else
-            echo "vcpkg needs bootstrapping"
-          fi
-
       - name: Build Ladybird (optimized)
         working-directory: ladybird-src
         run: |
           export CMAKE_BUILD_PARALLEL_LEVEL=4
-          export VCPKG_MAX_CONCURRENCY=4
           export CCACHE_DIR="$HOME/.ccache"
-          export VCPKG_BINARY_SOURCES="$VCPKG_BINARY_SOURCES"
           # Ensure ninja is in PATH
           export PATH="/usr/bin:$PATH"
-          # Optimize for GitHub runners (4 vCPUs, 16GB RAM)
-          sudo -u builder ./Meta/ladybird.py build || (echo "Build failed, checking vcpkg logs..." && cat Build/release/vcpkg-manifest-install.log && exit 1)
+          sudo -u builder ./Meta/ladybird.py build
 
       - name: Package Fedora binary
         run: |
