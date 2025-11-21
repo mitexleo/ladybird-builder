@@ -125,7 +125,9 @@
     "include_artifacts": true
   },
   "security": {
-    "fedora_build_user": "nobody",
-    "use_sudo_for_non_root_build": true
+    "build_user": "builder",
+    "build_user_uid": 1001,
+    "use_dedicated_build_user": true,
+    "clone_as_build_user": true
   }
 }
