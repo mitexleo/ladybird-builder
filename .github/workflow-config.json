@@ -43,7 +43,11 @@
           "libxrandr-dev",
           "libxcursor-dev",
           "libxinerama-dev",
-          "libxxf86vm-dev"
+          "libxxf86vm-dev",
+          "libegl1-mesa-dev",
+          "libgles2-mesa-dev",
+          "libwayland-dev",
+          "libxkbcommon-dev"
         ]
       },
       {
@@ -88,6 +92,10 @@
           "libXcursor-devel",
           "libXinerama-devel",
           "libXxf86vm-devel",
+          "mesa-libEGL-devel",
+          "mesa-libGLES-devel",
+          "wayland-devel",
+          "libxkbcommon-devel",
           "sudo"
         ]
       }
@@ -126,8 +134,10 @@
   },
   "security": {
     "ubuntu_build_user": "runner",
-    "fedora_build_user": "root",
+    "fedora_build_user": "builder",
+    "fedora_build_user_uid": 1001,
     "use_non_root_build": true,
-    "platform_specific_approach": true
+    "platform_specific_approach": true,
+    "fedora_container_root_for_packages": true
   }
 }
