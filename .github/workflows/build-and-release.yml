@@ -108,49 +108,12 @@ jobs:
           EOF
           chmod +x artifacts/ubuntu/ladybird-launcher.sh
 
-      - name: Create .deb package
+      - name: Create portable binary archive
         run: |
-          # Install packaging tools
-          sudo apt install -y devscripts debhelper dh-make
-
-          # Create package structure
-          mkdir -p ladybird-deb/usr/bin
-          mkdir -p ladybird-deb/usr/share/applications
-          mkdir -p ladybird-deb/usr/share/icons/hicolor/256x256/apps
-          mkdir -p ladybird-deb/DEBIAN
-
-          # Copy binary
-          cp ladybird-src/Build/release/bin/Ladybird ladybird-deb/usr/bin/ladybird
-
-          # Create desktop file
-          cat > ladybird-deb/usr/share/applications/ladybird.desktop << 'EOF'
-          [Desktop Entry]
-          Version=1.0
-          Type=Application
-          Name=Ladybird Browser
-          Comment=Independent web browser from SerenityOS
-          Exec=ladybird
-          Icon=ladybird
-          Terminal=false
-          Categories=Network;WebBrowser;
-          EOF
-
-          # Create control file
-          cat > ladybird-deb/DEBIAN/control << 'EOF'
-          Package: ladybird-browser
-          Version: ${{ steps.version.outputs.VERSION }}
-          Section: web
-          Priority: optional
-          Architecture: amd64
-          Depends: libqt6core6, libqt6gui6, libqt6widgets6, libqt6network6, libpulse0
-          Maintainer: Ladybird Builder <noreply@github.com>
-          Description: Independent web browser from SerenityOS
-           Ladybird is a new cross-platform web browser project
-           that aims to bring the SerenityOS browser to other platforms.
-          EOF
-
-          # Build .deb package
-          dpkg-deb --build ladybird-deb artifacts/ladybird-browser_${{ steps.version.outputs.VERSION }}_amd64.deb
+          # Create portable archive with launcher script
+          cd artifacts/ubuntu
+          tar -czf ../ladybird-ubuntu-${{ steps.version.outputs.VERSION }}.tar.gz .
+          cd ../..
 
       - name: Upload Ubuntu artifacts
         uses: actions/upload-artifact@v4
@@ -236,90 +199,12 @@ jobs:
           EOF
           chmod +x artifacts/fedora/ladybird-launcher.sh
 
-      - name: Create .rpm package
+      - name: Create portable binary archive
         run: |
-          # Install packaging tools
-          dnf install -y rpm-build rpmdevtools
-
-          # Create RPM build environment
-          rpmdev-setuptree
-
-          # Create spec file
-          cat > ~/rpmbuild/SPECS/ladybird.spec << 'EOF'
-          Name:           ladybird-browser
-          Version:        ${{ steps.version.outputs.VERSION }}
-          Release:        1%{?dist}
-          Summary:        Independent web browser from SerenityOS
-
-          License:        BSD
-          URL:            https://ladybird.dev
-          Source0:        ladybird-%{version}.tar.gz
-
-          BuildRequires:  qt6-qtbase-devel
-          Requires:       qt6-qtbase qt6-qtwayland pulseaudio-libs
-
-          %description
-          Ladybird is a new cross-platform web browser project
-          that aims to bring the SerenityOS browser to other platforms.
-
-          %prep
-          %setup -q
-
-          %build
-          ./Meta/ladybird.py build
-
-          %install
-          mkdir -p %{buildroot}/usr/bin
-          mkdir -p %{buildroot}/usr/share/applications
-          install -m 755 Build/release/bin/Ladybird %{buildroot}/usr/bin/ladybird
-
-          mkdir -p %{buildroot}/usr/share/applications
-          cat > %{buildroot}/usr/share/applications/ladybird.desktop << 'DESKTOP'
-          [Desktop Entry]
-          Version=1.0
-          Type=Application
-          Name=Ladybird Browser
-          Comment=Independent web browser from SerenityOS
-          Exec=ladybird
-          Icon=ladybird
-          Terminal=false
-          Categories=Network;WebBrowser;
-          DESKTOP
-
-          %files
-          /usr/bin/ladybird
-          /usr/share/applications/ladybird.desktop
-
-          %changelog
-          * Wed Jan 01 2025 Ladybird Builder <noreply@github.com> - 1.0.0-1
-          - Initial package
-          EOF
-
-          # Copy binary and create simple RPM structure
-          mkdir -p ladybird-rpm/usr/bin
-          mkdir -p ladybird-rpm/usr/share/applications
-          cp ladybird-src/Build/release/bin/Ladybird ladybird-rpm/usr/bin/ladybird
-
-          cat > ladybird-rpm/usr/share/applications/ladybird.desktop << 'EOF'
-          [Desktop Entry]
-          Version=1.0
-          Type=Application
-          Name=Ladybird Browser
-          Comment=Independent web browser from SerenityOS
-          Exec=ladybird
-          Icon=ladybird
-          Terminal=false
-          Categories=Network;WebBrowser;
-          EOF
-
-          # Create tarball for RPM build (simplified approach)
-          tar czf ~/rpmbuild/SOURCES/ladybird-${{ steps.version.outputs.VERSION }}.tar.gz ladybird-rpm/
-
-          # Build RPM
-          rpmbuild -bb ~/rpmbuild/SPECS/ladybird.spec
-
-          # Copy RPM to artifacts
-          cp ~/rpmbuild/RPMS/x86_64/ladybird-browser-${{ steps.version.outputs.VERSION }}-1.*.x86_64.rpm artifacts/ladybird-browser-${{ steps.version.outputs.VERSION }}.x86_64.rpm
+          # Create portable archive with launcher script
+          cd artifacts/fedora
+          tar -czf ../ladybird-fedora-${{ steps.version.outputs.VERSION }}.tar.gz .
+          cd ../..
 
       - name: Upload Fedora artifacts
         uses: actions/upload-artifact@v4
@@ -418,10 +303,8 @@ jobs:
             - Trigger: ${{ github.event_name }}
 
             ## Available Artifacts:
-            - Ubuntu (GCC 14) - Portable binary with launcher script
-            - Fedora - Portable binary with launcher script
-            - Debian/Ubuntu - `.deb` package for easy installation
-            - Fedora/RHEL - `.rpm` package for easy installation
+            - Ubuntu (GCC 14) - Portable binary archive (.tar.gz)
+            - Fedora - Portable binary archive (.tar.gz)
 
             ## Installation:
             1. Download the appropriate archive for your distribution
@@ -432,7 +315,5 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ladybird-ubuntu/**
-            ladybird-fedora/**
-            ladybird-browser_${{ steps.version.outputs.VERSION }}_amd64.deb
-            ladybird-browser-${{ steps.version.outputs.VERSION }}.x86_64.rpm
+            ladybird-ubuntu-${{ steps.version.outputs.VERSION }}.tar.gz
+            ladybird-fedora-${{ steps.version.outputs.VERSION }}.tar.gz
