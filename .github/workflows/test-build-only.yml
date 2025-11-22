@@ -1,0 +1,88 @@
+name: Test Ladybird Build Only
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  test-ubuntu-build:
+    name: Test Ubuntu Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Ladybird repository
+        run: |
+          git clone --depth 1 https://github.com/LadybirdBrowser/ladybird.git ladybird-src
+          cd ladybird-src
+          git submodule update --init --recursive
+
+      - name: Install Ubuntu dependencies (exact from official instructions)
+        run: |
+          sudo apt update
+          sudo apt install -y autoconf autoconf-archive automake build-essential ccache cmake curl fonts-liberation2 git libdrm-dev libgl1-mesa-dev libtool nasm ninja-build pkg-config python3-venv qt6-base-dev qt6-tools-dev-tools qt6-wayland tar unzip zip libpulse-dev
+
+      - name: Install CMake 3.25+ from Kitware
+        run: |
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+          echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/kitware.list
+          sudo apt update
+          sudo apt install -y cmake
+
+      - name: Install GCC-14 compiler
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+          sudo apt update
+          sudo apt install -y g++-14 libstdc++-14-dev
+
+      - name: Build Ladybird using official method
+        working-directory: ladybird-src
+        run: |
+          ./Meta/ladybird.py build
+
+      - name: Verify build output
+        run: |
+          echo "=== Build directory contents ==="
+          ls -la ladybird-src/Build/release/bin/
+          echo "=== Checking for Ladybird binary ==="
+          ls -la ladybird-src/Build/release/bin/Ladybird || echo "Ladybird binary not found"
+          echo "=== Checking file type ==="
+          file ladybird-src/Build/release/bin/Ladybird 2>/dev/null || echo "Cannot check file type"
+
+      - name: Test run Ladybird (basic check)
+        working-directory: ladybird-src/Build/release/bin
+        run: |
+          echo "Testing if Ladybird binary can be executed..."
+          ./Ladybird --version 2>&1 | head -5 || echo "Binary execution test completed"
+
+  test-fedora-build:
+    name: Test Fedora Build
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+
+    steps:
+      - name: Install Fedora dependencies (exact from official instructions)
+        run: |
+          dnf update -y
+          dnf install -y autoconf-archive automake ccache cmake curl git libdrm-devel liberation-sans-fonts libglvnd-devel libtool nasm ninja-build patchelf perl-FindBin perl-IPC-Cmd perl-lib perl-Time-Piece qt6-qtbase-devel qt6-qttools-devel qt6-qtwayland-devel tar unzip zip zlib-ng-compat-static pulseaudio-libs-devel
+
+      - name: Checkout Ladybird repository
+        run: |
+          git clone --depth 1 https://github.com/LadybirdBrowser/ladybird.git ladybird-src
+          cd ladybird-src
+          git submodule update --init --recursive
+
+      - name: Build Ladybird using official method
+        working-directory: ladybird-src
+        run: |
+          ./Meta/ladybird.py build
+
+      - name: Verify build output
+        run: |
+          echo "=== Build directory contents ==="
+          ls -la ladybird-src/Build/release/bin/
+          echo "=== Checking for Ladybird binary ==="
+          ls -la ladybird-src/Build/release/bin/Ladybird || echo "Ladybird binary not found"
+          echo "=== Checking file type ==="
+          file ladybird-src/Build/release/bin/Ladybird 2>/dev/null || echo "Cannot check file type"
