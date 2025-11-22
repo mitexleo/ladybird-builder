@@ -31,42 +31,19 @@ jobs:
       - name: Checkout builder repository
         uses: actions/checkout@v4
 
-      - name: Cache vcpkg dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/vcpkg
-            ladybird-src/Build/vcpkg/downloads
-            ladybird-src/Build/vcpkg/buildtrees
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('**/vcpkg.json') }}
-          restore-keys: |
-            vcpkg-${{ runner.os }}-
-
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ccache-${{ runner.os }}-${{ matrix.compiler }}
-
-      - name: Clean up existing directory
-        run: |
-          rm -rf ladybird-src || true
-
       - name: Clone Ladybird repository
         run: |
-          git clone --depth 1 --shallow-submodules $LADYBIRD_REPO ladybird-src
+          git clone --depth 1 $LADYBIRD_REPO ladybird-src
           cd ladybird-src
-          git submodule update --init --depth 1
+          git submodule update --init --recursive
 
       - name: Install Ubuntu dependencies
         run: |
           sudo apt update
           sudo apt install -y autoconf autoconf-archive automake build-essential ccache cmake curl fonts-liberation2 git libdrm-dev libgl1-mesa-dev libtool nasm ninja-build pkg-config python3-venv qt6-base-dev qt6-tools-dev-tools qt6-wayland tar unzip zip libpulse-dev
-          # Ensure ninja is available in PATH
-          sudo ln -sf /usr/bin/ninja-build /usr/bin/ninja || true
 
       - name: Install CMake 3.25+
         run: |
-          # Add Kitware GPG signing key and repository for latest CMake
           wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
           echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/kitware.list
           sudo apt update
@@ -77,43 +54,18 @@ jobs:
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
           sudo apt update
           sudo apt install -y g++-14 libstdc++-14-dev
-          echo "CC=gcc-14" >> $GITHUB_ENV
-          echo "CXX=g++-14" >> $GITHUB_ENV
 
-      - name: Check GCC version
-        run: |
-          echo "GCC version:"
-          gcc --version
-          echo "G++ version:"
-          g++ --version
-
-      - name: Build Ladybird (optimized)
+      - name: Build Ladybird
         working-directory: ladybird-src
         run: |
-          export CMAKE_BUILD_PARALLEL_LEVEL=4
-          export CCACHE_DIR="$HOME/.ccache"
-          # Ensure ninja is in PATH
-          export PATH="/usr/bin:$PATH"
           ./Meta/ladybird.py build
 
       - name: Package Ubuntu binary
         run: |
           mkdir -p artifacts/ubuntu
           cp -r ladybird-src/Build/release/bin/* artifacts/ubuntu/
-          # Create a simple launcher script
-          cat > artifacts/ubuntu/ladybird-launcher.sh << 'EOF'
-          #!/bin/bash
-          cd "$(dirname "$0")"
-          ./Ladybird "$@"
-          EOF
-          chmod +x artifacts/ubuntu/ladybird-launcher.sh
-
-      - name: Create portable binary archive
-        run: |
-          # Create portable archive with launcher script
-          cd artifacts/ubuntu
-          tar -czf ../ladybird-ubuntu-${{ steps.version.outputs.VERSION }}.tar.gz .
-          cd ../..
+          # Copy resource files
+          cp -r ladybird-src/Base/res/* artifacts/ubuntu/ 2>/dev/null || true
 
       - name: Upload Ubuntu artifacts
         uses: actions/upload-artifact@v4
@@ -125,7 +77,6 @@ jobs:
   build-fedora:
     name: Build on Fedora
     runs-on: ubuntu-latest
-
     container:
       image: fedora:latest
 
@@ -134,77 +85,27 @@ jobs:
         run: |
           dnf update -y
           dnf install -y autoconf-archive automake ccache cmake curl git libdrm-devel liberation-sans-fonts libglvnd-devel libtool nasm ninja-build patchelf perl-FindBin perl-IPC-Cmd perl-lib perl-Time-Piece qt6-qtbase-devel qt6-qttools-devel qt6-qtwayland-devel tar unzip zip zlib-ng-compat-static pulseaudio-libs-devel
-          # Ensure ninja is available in PATH
-          ln -sf /usr/bin/ninja-build /usr/bin/ninja || true
 
       - name: Checkout builder repository
         uses: actions/checkout@v4
 
-      - name: Cache vcpkg dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/vcpkg
-            ladybird-src/Build/vcpkg/downloads
-            ladybird-src/Build/vcpkg/buildtrees
-          key: vcpkg-fedora-${{ hashFiles('**/vcpkg.json') }}
-          restore-keys: |
-            vcpkg-fedora-
-
-      - name: Setup ccache
-        run: |
-          mkdir -p ~/.ccache
-          echo "max_size = 2.0G" > ~/.ccache/ccache.conf
-
-      - name: Clean up existing directory
-        run: |
-          rm -rf ladybird-src || true
-
       - name: Clone Ladybird repository
         run: |
-          # Create non-root user for building
-          useradd -m -u 1001 builder
-          chown -R builder:builder /__w/ladybird-builder/ladybird-builder
-
-          # Clone as non-root user with shallow submodules
-          sudo -u builder git clone --depth 1 --shallow-submodules $LADYBIRD_REPO ladybird-src
+          git clone --depth 1 $LADYBIRD_REPO ladybird-src
           cd ladybird-src
-          sudo -u builder git submodule update --init --depth 1
+          git submodule update --init --recursive
 
-      - name: Check GCC version
-        run: |
-          echo "GCC version:"
-          gcc --version
-          echo "G++ version:"
-          g++ --version
-
-      - name: Build Ladybird (optimized)
+      - name: Build Ladybird
         working-directory: ladybird-src
         run: |
-          export CMAKE_BUILD_PARALLEL_LEVEL=4
-          export CCACHE_DIR="$HOME/.ccache"
-          # Ensure ninja is in PATH
-          export PATH="/usr/bin:$PATH"
-          sudo -u builder ./Meta/ladybird.py build
+          ./Meta/ladybird.py build
 
       - name: Package Fedora binary
         run: |
           mkdir -p artifacts/fedora
           cp -r ladybird-src/Build/release/bin/* artifacts/fedora/
-          # Create a simple launcher script
-          cat > artifacts/fedora/ladybird-launcher.sh << 'EOF'
-          #!/bin/bash
-          cd "$(dirname "$0")"
-          ./Ladybird "$@"
-          EOF
-          chmod +x artifacts/fedora/ladybird-launcher.sh
-
-      - name: Create portable binary archive
-        run: |
-          # Create portable archive with launcher script
-          cd artifacts/fedora
-          tar -czf ../ladybird-fedora-${{ steps.version.outputs.VERSION }}.tar.gz .
-          cd ../..
+          # Copy resource files
+          cp -r ladybird-src/Base/res/* artifacts/fedora/ 2>/dev/null || true
 
       - name: Upload Fedora artifacts
         uses: actions/upload-artifact@v4
@@ -235,7 +136,6 @@ jobs:
       - name: Get current version
         id: current_version
         run: |
-          # Get the latest tag or start from v1.0.0
           LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "Current latest tag: $LATEST_TAG"
@@ -244,38 +144,18 @@ jobs:
         id: version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Manual release - use provided version
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            # Tag push - use tag version
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           else
-            # Main branch push - auto-increment patch version
             CURRENT_VERSION=${{ steps.current_version.outputs.LATEST_TAG }}
-            # Remove 'v' prefix and split version components
             VERSION_NUM=${CURRENT_VERSION#v}
             IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NUM"
-            # Increment patch version
             NEW_PATCH=$((PATCH + 1))
             NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
             echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
           fi
           echo "Using version: ${{ steps.version.outputs.VERSION }}"
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          # Generate changelog from git commits since last tag
-          LAST_TAG=${{ steps.current_version.outputs.LATEST_TAG }}
-          CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${LAST_TAG}..HEAD 2>/dev/null || git log --pretty=format:"- %s (%h)" -n 10)
-
-          if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="No significant changes detected"
-          fi
-
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create and push tag (for main branch releases)
         if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'schedule'
@@ -296,26 +176,23 @@ jobs:
 
             Automated build of Ladybird Browser
 
-            ## Changes since last release:
-            ${{ steps.changelog.outputs.CHANGELOG }}
-
             ## Build Information:
             - Commit: ${{ github.sha }}
             - Build Date: ${{ github.event.head_commit.timestamp }}
             - Trigger: ${{ github.event_name }}
 
-            ## Available Artifacts:
-            - Ubuntu (GCC 14) - Portable binary archive (.tar.gz)
-            - Fedora - Portable binary archive (.tar.gz)
+            ## Available Binaries:
+            - Ubuntu (GCC 14) - Portable binary directory
+            - Fedora - Portable binary directory
 
             ## Installation:
-            1. Download the appropriate archive for your distribution
+            1. Download the appropriate binary directory for your distribution
             2. Extract the files
-            3. Run `./ladybird-launcher.sh` to start the browser
+            3. Run `./Ladybird` to start the browser
 
             **Note:** This is an automated build. For official releases, please check the main Ladybird repository.
           draft: false
           prerelease: false
           files: |
-            artifacts/ladybird-ubuntu-${{ steps.version.outputs.VERSION }}.tar.gz
-            artifacts/ladybird-fedora-${{ steps.version.outputs.VERSION }}.tar.gz
+            artifacts/ladybird-ubuntu/**
+            artifacts/ladybird-fedora/**
