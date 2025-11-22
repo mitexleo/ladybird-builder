@@ -100,7 +100,7 @@
     "retention_days": 7,
     "include_launcher": true,
     "packaging": {
-      "create_tarballs": false,
+      "create_tarballs": true,
       "include_debug_symbols": false
     }
   },

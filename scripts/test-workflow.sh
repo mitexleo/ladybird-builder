@@ -108,8 +108,17 @@ for job in "${jobs[@]}"; do
     fi
 done
 
-# Test 10: Check schedule configuration
-echo "📋 Test 10: Checking schedule configuration..."
+# Test 10: Check tarball packaging configuration
+echo "📋 Test 10: Checking tarball packaging..."
+if grep -q "ladybird-ubuntu.tar.gz" .github/workflows/build-and-release.yml && grep -q "ladybird-fedora.tar.gz" .github/workflows/build-and-release.yml; then
+    echo "✅ Tarball packaging configured"
+else
+    echo "❌ Tarball packaging missing"
+    exit 1
+fi
+
+# Test 11: Check schedule configuration
+echo "📋 Test 11: Checking schedule configuration..."
 if grep -q 'cron: "0 0,12 \* \* \*"' .github/workflows/build-and-release.yml; then
     echo "✅ Schedule configured for twice daily builds"
 else
@@ -124,4 +133,4 @@ echo "Next steps:"
 echo "1. Push this repository to GitHub"
 echo "2. The workflow will automatically run on the main/master branch"
 echo "3. Check the Actions tab to monitor build progress"
-echo "4. Releases will be created in the Releases section"
+echo "4. Releases will be created in the Releases section with tarball packages"

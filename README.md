@@ -7,8 +7,8 @@ This repository contains GitHub Actions workflows to automatically build and rel
 This is a **builder repository** that automatically:
 - Clones the official Ladybird Browser source code from [LadybirdBrowser/ladybird](https://github.com/LadybirdBrowser/ladybird)
 - Builds Ladybird Browser on Ubuntu and Fedora
-- Tests with both GCC 14 and Clang 20 compilers
 - Creates releases with auto-incrementing version tags (starting from v1.0.0)
+- Packages binaries as portable tarballs for easy distribution
 - Runs twice daily to get the latest commits
 - Supports manual triggering via workflow_dispatch
 - Includes all required graphics and audio dependencies
@@ -18,8 +18,8 @@ This is a **builder repository** that automatically:
 1. **Clone Source**: The workflow clones the official Ladybird repository
 2. **Install Dependencies**: Installs all required build dependencies for each distribution
 3. **Build**: Uses Ladybird's official build script (`./Meta/ladybird.py build`)
-4. **Package**: Creates portable binaries with launcher scripts
-5. **Release**: Creates GitHub releases with auto-incrementing version tags
+4. **Package**: Creates portable tarballs containing the binary and resources
+5. **Release**: Creates GitHub releases with auto-incrementing version tags and tarball packages
 
 ## Dependencies
 
@@ -35,13 +35,13 @@ The workflow automatically installs all required dependencies including:
 ## Workflow Features
 
 ### Build Matrix
-- **Ubuntu**: Built with both GCC 14 and Clang 20 compilers
+- **Ubuntu**: Built with GCC 14 compiler
 - **Fedora**: Latest Fedora container with system compiler
 
 ### Release Strategy
 - Versioning starts at `v1.0.0` and auto-increments patch version
 - Each successful build creates a new release with tag (e.g., v1.0.1, v1.0.2)
-- Release includes binaries for all supported platforms
+- Release includes tarball packages for all supported platforms
 
 ### Schedule
 - Runs twice daily at 00:00 and 12:00 UTC
@@ -65,21 +65,24 @@ To manually trigger a build:
 
 ### Artifacts
 Each release contains:
-- `ladybird-ubuntu/` - Ubuntu build with GCC 14
-- `ladybird-fedora/` - Fedora build
+- `ladybird-ubuntu.tar.gz` - Ubuntu build with GCC 14
+- `ladybird-fedora.tar.gz` - Fedora build
 
-Each artifact includes:
+Each tarball includes:
 - Ladybird binary
-- Required libraries and resources
-- Launcher script (`ladybird-launcher.sh`)
+- Required libraries
+- All necessary resource files (automatically included by the build system)
 
 ## Installation
 
-1. Download the appropriate archive for your distribution from the Releases page
-2. Extract the files
-3. Run the launcher script:
+1. Download the appropriate tarball for your distribution from the Releases page
+2. Extract the files:
    ```bash
-   ./ladybird-launcher.sh
+   tar -xzf ladybird-ubuntu.tar.gz  # or ladybird-fedora.tar.gz
+   ```
+3. Run the Ladybird binary:
+   ```bash
+   ./Ladybird
    ```
 
 ## Requirements

@@ -64,14 +64,18 @@ jobs:
         run: |
           mkdir -p artifacts/ubuntu
           cp -r ladybird-src/Build/release/bin/* artifacts/ubuntu/
-          # Copy resource files
-          cp -r ladybird-src/Base/res/* artifacts/ubuntu/ 2>/dev/null || true
+
+      - name: Package Ubuntu binary as tarball
+        run: |
+          cd artifacts/ubuntu
+          tar -czf ../ladybird-ubuntu.tar.gz .
+          cd ../..
 
       - name: Upload Ubuntu artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ladybird-ubuntu
-          path: artifacts/ubuntu/
+          path: artifacts/ladybird-ubuntu.tar.gz
           retention-days: 7
 
   build-fedora:
@@ -110,16 +114,20 @@ jobs:
         run: |
           mkdir -p artifacts/fedora
           cp -r ladybird-src/Build/release/bin/* artifacts/fedora/
-          # Copy resource files
-          cp -r ladybird-src/Base/res/* artifacts/fedora/ 2>/dev/null || true
           # Fix ownership so release job can access files
           chown -R 1001:1001 artifacts/
+
+      - name: Package Fedora binary as tarball
+        run: |
+          cd artifacts/fedora
+          tar -czf ../ladybird-fedora.tar.gz .
+          cd ../..
 
       - name: Upload Fedora artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ladybird-fedora
-          path: artifacts/fedora/
+          path: artifacts/ladybird-fedora.tar.gz
           retention-days: 7
 
   create-release:
@@ -194,13 +202,13 @@ jobs:
             - Fedora - Portable binary directory
 
             ## Installation:
-            1. Download the appropriate binary directory for your distribution
-            2. Extract the files
+            1. Download the appropriate tarball for your distribution
+            2. Extract the files: `tar -xzf ladybird-ubuntu.tar.gz` (or ladybird-fedora.tar.gz)
             3. Run `./Ladybird` to start the browser
 
             **Note:** This is an automated build. For official releases, please check the main Ladybird repository.
           draft: false
           prerelease: false
           files: |
-            artifacts/ladybird-ubuntu/**
-            artifacts/ladybird-fedora/**
+            artifacts/ladybird-ubuntu.tar.gz
+            artifacts/ladybird-fedora.tar.gz
