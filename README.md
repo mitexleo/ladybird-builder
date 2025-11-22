@@ -70,8 +70,9 @@ Each release contains:
 
 Each tarball includes:
 - Ladybird binary
-- Required libraries
-- All necessary resource files (automatically included by the build system)
+- Required libraries  
+- All necessary resource files (automatically handled by CMake build system)
+- Complete portable binary environment
 
 ## Installation
 
@@ -84,6 +85,8 @@ Each tarball includes:
    ```bash
    ./Ladybird
    ```
+
+**Note:** The tarballs are created directly from the build directory and include all necessary files for a complete portable installation.
 
 ## Requirements
 

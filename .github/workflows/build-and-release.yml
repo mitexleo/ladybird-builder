@@ -60,16 +60,12 @@ jobs:
         run: |
           ./Meta/ladybird.py build
 
-      - name: Package Ubuntu binary
-        run: |
-          mkdir -p artifacts/ubuntu
-          cp -r ladybird-src/Build/release/bin/* artifacts/ubuntu/
-
       - name: Package Ubuntu binary as tarball
         run: |
-          cd artifacts/ubuntu
-          tar -czf ../ladybird-ubuntu.tar.gz .
-          cd ../..
+          mkdir -p artifacts
+          cd ladybird-src/Build/release/bin
+          tar -czf ../../../../artifacts/ladybird-ubuntu.tar.gz .
+          cd ../../../..
 
       - name: Upload Ubuntu artifacts
         uses: actions/upload-artifact@v4
@@ -110,18 +106,14 @@ jobs:
           # Build as non-root user to avoid Ladybird's root detection
           su runner -c "./Meta/ladybird.py build"
 
-      - name: Package Fedora binary
-        run: |
-          mkdir -p artifacts/fedora
-          cp -r ladybird-src/Build/release/bin/* artifacts/fedora/
-          # Fix ownership so release job can access files
-          chown -R 1001:1001 artifacts/
-
       - name: Package Fedora binary as tarball
         run: |
-          cd artifacts/fedora
-          tar -czf ../ladybird-fedora.tar.gz .
-          cd ../..
+          mkdir -p artifacts
+          cd ladybird-src/Build/release/bin
+          tar -czf ../../../../artifacts/ladybird-fedora.tar.gz .
+          cd ../../../..
+          # Fix ownership so release job can access files
+          chown -R 1001:1001 artifacts/
 
       - name: Upload Fedora artifacts
         uses: actions/upload-artifact@v4
