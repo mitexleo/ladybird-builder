@@ -152,7 +152,8 @@ jobs:
       - name: Get current version
         id: current_version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+          # Try to get latest tag, fallback to version file, then to default
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || cat .github/version.txt 2>/dev/null || echo "v1.0.0")
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "Current latest tag: $LATEST_TAG"
 
@@ -170,6 +171,8 @@ jobs:
             NEW_PATCH=$((PATCH + 1))
             NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
             echo "VERSION=$NEW_VERSION" >> $GITHUB_OUTPUT
+            # Update version file for consistency
+            echo "v${NEW_VERSION}" > .github/version.txt
           fi
           echo "Using version: ${{ steps.version.outputs.VERSION }}"
 
@@ -179,8 +182,15 @@ jobs:
           NEW_VERSION="${{ steps.version.outputs.VERSION }}"
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
-          git push origin "v${NEW_VERSION}"
+          # Check if tag already exists before creating it
+          if git rev-parse "v${NEW_VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${NEW_VERSION} already exists, skipping tag creation"
+          else
+            git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
+            git push origin "v${NEW_VERSION}"
+            # Update version file to match the new tag
+            echo "v${NEW_VERSION}" > .github/version.txt
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
